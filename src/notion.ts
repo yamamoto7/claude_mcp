@@ -105,6 +105,14 @@ interface SearchArgs {
   page_size?: number;
 }
 
+interface CreatePageArgs {
+  parent: { page_id: string } | { database_id: string };
+  properties?: any;
+  children?: any[];
+  icon?: { emoji: string } | { external: { url: string } };
+  cover?: { external: { url: string } };
+}
+
 const commonIdDescription = "It should be a 32-character string (excluding hyphens) formatted as 8-4-4-4-12 with hyphens (-).";
 
 // common object schema
@@ -796,6 +804,105 @@ const searchTool: Tool = {
   },
 };
 
+const createPageTool: Tool = {
+  name: "notion_create_page",
+  description: "Create a new page in Notion",
+  inputSchema: {
+    type: "object",
+    properties: {
+      parent: {
+        type: "object",
+        description:
+          "The parent of the new page. Can be a page_id or database_id.",
+        oneOf: [
+          {
+            type: "object",
+            properties: {
+              page_id: {
+                type: "string",
+                description: `The ID of the parent page. ${commonIdDescription}`,
+              },
+            },
+            required: ["page_id"],
+          },
+          {
+            type: "object",
+            properties: {
+              database_id: {
+                type: "string",
+                description: `The ID of the parent database. ${commonIdDescription}`,
+              },
+            },
+            required: ["database_id"],
+          },
+        ],
+      },
+      properties: {
+        type: "object",
+        description:
+          "Page properties. For pages in databases, the keys are the property names and values are property values. For pages not in databases, the only valid property is 'title'.",
+      },
+      children: {
+        type: "array",
+        description: "Content to be created in the page.",
+        items: {
+          type: "object",
+        },
+      },
+      icon: {
+        type: "object",
+        description: "The page icon.",
+        oneOf: [
+          {
+            type: "object",
+            properties: {
+              emoji: {
+                type: "string",
+                description: "Emoji character.",
+              },
+            },
+            required: ["emoji"],
+          },
+          {
+            type: "object",
+            properties: {
+              external: {
+                type: "object",
+                properties: {
+                  url: {
+                    type: "string",
+                    description: "URL of an external image.",
+                  },
+                },
+                required: ["url"],
+              },
+            },
+            required: ["external"],
+          },
+        ],
+      },
+      cover: {
+        type: "object",
+        description: "The page cover.",
+        properties: {
+          external: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "URL of an external image.",
+              },
+            },
+            required: ["url"],
+          },
+        },
+        required: ["external"],
+      },
+    },
+    required: ["parent"],
+  },
+};
+
 class NotionClientWrapper {
   private notionToken: string;
   private baseUrl: string = "https://api.notion.com/v1";
@@ -1058,6 +1165,28 @@ class NotionClientWrapper {
     if (page_size) body.page_size = page_size;
 
     const response = await fetch(`${this.baseUrl}/search`, {
+      method: "POST",
+      headers: this.headers,
+      body: JSON.stringify(body),
+    });
+
+    return response.json();
+  }
+
+  async createPage(
+    parent: { page_id: string } | { database_id: string },
+    properties?: any,
+    children?: any[],
+    icon?: { emoji: string } | { external: { url: string } },
+    cover?: { external: { url: string } }
+  ): Promise<any> {
+    const body: any = { parent };
+    if (properties) body.properties = properties;
+    if (children) body.children = children;
+    if (icon) body.icon = icon;
+    if (cover) body.cover = cover;
+
+    const response = await fetch(`${this.baseUrl}/pages`, {
       method: "POST",
       headers: this.headers,
       body: JSON.stringify(body),
@@ -1333,6 +1462,21 @@ async function main() {
             };
           }
 
+          case "notion_create_page": {
+            const { parent, properties, children, icon, cover } =
+              request.params.arguments as unknown as CreatePageArgs;
+            const response = await notionClient.createPage(
+              parent,
+              properties,
+              children,
+              icon,
+              cover
+            );
+            return {
+              content: [{ type: "text", text: JSON.stringify(response) }],
+            };
+          }
+
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
         }
@@ -1372,6 +1516,7 @@ async function main() {
         createCommentTool,
         retrieveCommentsTool,
         searchTool,
+        createPageTool,
       ],
     };
   });
