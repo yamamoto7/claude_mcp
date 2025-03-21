@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "notion": {
+            "command": "/Users/kenta.yamamoto/.anyenv/envs/nodenv/shims/bun",
+            "args": [
+                "run",
+                "/Users/kenta.yamamoto/Projects/personal/claude/mcp/src/notion.ts"
+            ],
+            "env": {
+                "NOTION_API_TOKEN": "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"
+            }
+        }
+    }
+}
