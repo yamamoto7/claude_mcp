@@ -9,6 +9,12 @@
             "env": {
                 "NOTION_API_TOKEN": "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"
             }
+        },
+        "playwright": {
+            "command": "npx",
+            "args": [
+                "@playwright/mcp@latest"
+            ]
         }
     }
 }
